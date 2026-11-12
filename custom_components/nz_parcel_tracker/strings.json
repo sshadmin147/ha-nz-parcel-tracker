@@ -31,7 +31,7 @@
       },
       "add_parcel": {
         "title": "Add a parcel",
-        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card).",
+        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card). For Post Haste, enter the customer number and the consignment ID separated by a space, for example 2020119 DESX0026044.",
         "data": {
           "carrier": "Courier",
           "tracking_code": "Tracking number"
@@ -58,7 +58,8 @@
     "carrier": {
       "options": {
         "aramex": "Aramex",
-        "nz_post": "NZ Post"
+        "nz_post": "NZ Post",
+        "post_haste": "Post Haste"
       }
     },
     "delivered_filter_type": {

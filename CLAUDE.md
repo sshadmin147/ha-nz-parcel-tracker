@@ -6,7 +6,8 @@ couriers, domain `nz_parcel_tracker`. A fork of
 stripped back to its own tracking logic: no dependency on any other
 integration, shared CI or suite tooling. Not published to HACS.
 
-NZ Post and Aramex (New Zealand only) are the couriers so far. Everything
+NZ Post, Aramex (New Zealand only) and Post Haste (customer labels only) are the
+couriers so far. Everything
 outside `carriers/<courier>/` is courier independent. Keep it that way: no courier names, endpoints, payload
 fields or status wording in the core.
 
@@ -35,6 +36,7 @@ Couriers, in `carriers/`:
 | `carriers/base.py` | The `Carrier` interface and `CarrierApiError` |
 | `carriers/__init__.py` | `CARRIERS` registry, `create_carriers` |
 | `carriers/aramex/` | Aramex NZ: same layout as `nz_post/`; `async_prepare` loads the NZ time zone for the date-only ETA |
+| `carriers/post_haste/` | Post Haste: scrapes the public HTML tracking page; the tracking code is `<customer number> <consignment id>` |
 | `carriers/nz_post/` | NZ Post: `api.py` (HTTP client), `mapping.py` (status maps and normalising), `const.py` (endpoints), `__init__.py` (`NZPostCarrier`) |
 
 Stored parcels are `{tracking_code, carrier}` dicts in the entry options. An
@@ -155,3 +157,23 @@ payload carries recipient data, so `raw` keeps only code, text and timestamp and
 `sender`/`receiver`/`weight`/`dimensions`/`pickup_point` stay `None`. The status
 codes and label formats come from the upstream repo and have not been checked
 against real parcels here.
+
+## Post Haste specifics (`carriers/post_haste/`)
+
+Post Haste has no JSON API for customer-printed labels, so the client reads the
+server-rendered tracking page
+(`tools.posthaste.co.nz/phl/servlet/ITNG_TAndTServlet?Key_Type=CustomerLabel`)
+with a regex on the `mk-transaction-title` headings: **layout changes will break
+it**, which is why a page with no events and no "no information available"
+message raises an error instead of reading as "unknown". The page is keyed on two
+values, so the stored `tracking_code` is `<customer number> <consignment id>`
+(space or hyphen). Event times are NZ local (`11:34AM 24/8/2026`), converted in
+`Pacific/Auckland` via `async_prepare`. Statuses are keyed on the entry title:
+`Pickup` (in transit), `On Board` (out for delivery, inferred from timing),
+`Delivery` (delivered); anything else is `unknown` plus a one-shot warning. The
+entry text names the courier and the signer, so only title and time are kept.
+Verified against one real delivered parcel (2026-11-12). Post Haste's prepaid
+ticket (`product_code` + `serial_number`), charge label (`label_number`) and
+contract bag lookups are not supported, and its newer JSON endpoint
+(`web-api.freightways.makerdesign.co.nz/track?query=`) returned nothing for the
+customer label we tried.

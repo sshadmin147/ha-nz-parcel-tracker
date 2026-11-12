@@ -13,6 +13,7 @@ track_parcel:
           options:
             - aramex
             - nz_post
+            - post_haste
           translation_key: carrier
 
 untrack_parcel:

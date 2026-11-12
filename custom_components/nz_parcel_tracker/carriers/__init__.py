@@ -11,6 +11,7 @@ import aiohttp
 from .aramex import AramexCarrier
 from .base import Carrier, CarrierApiError
 from .nz_post import NZPostCarrier
+from .post_haste import PostHasteCarrier
 
 __all__ = [
     "CARRIERS",
@@ -24,6 +25,7 @@ __all__ = [
 CARRIERS: dict[str, type[Carrier]] = {
     AramexCarrier.key: AramexCarrier,
     NZPostCarrier.key: NZPostCarrier,
+    PostHasteCarrier.key: PostHasteCarrier,
 }
 
 

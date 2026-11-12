@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking) and [Aramex New Zealand](https://www.aramex.co.nz/tools/track); the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
+A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking) [Aramex New Zealand](https://www.aramex.co.nz/tools/track) and [Post Haste](https://posthaste.co.nz/track/) customer labels; the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
 
 ## Contents
 
@@ -48,6 +48,7 @@ A custom Home Assistant integration that tracks parcels from New Zealand courier
 |---|---|---|---|
 | NZ Post | `nz_post` | 8 to 30 letters and numbers (spaces and hyphens are ignored) | Status, status history and a link to the public tracker. No delivery window, pickup point, sender, receiver, weight or dimensions. |
 | Aramex (New Zealand) | `aramex` | 8 to 30 letters and numbers | Status, status history, a link to the public tracker and Aramex's estimated delivery date (an all-day window, shown on the calendar). No pickup point, sender, receiver, weight or dimensions. |
+| Post Haste (customer labels) | `post_haste` | The customer number and the consignment ID, separated by a space, for example `2020119 DESX0026044` (both are in the tracking link the sender emails) | Status, status history and a link to the public tracker. No delivery window, pickup point, sender, receiver, weight or dimensions. Prepaid-ticket and charge-label consignments are not supported. |
 
 You always choose the courier a parcel is with; it is never guessed from the code. Both couriers use similar-looking codes, so guessing would sometimes be wrong.
 
