@@ -1,0 +1,15 @@
+{
+  "domain": "nz_parcel_tracker",
+  "name": "NZ Parcel Tracker",
+  "categories": ["productivity_information"],
+  "codeowners": ["@sshadmin147"],
+  "config_flow": true,
+  "documentation": "https://github.com/sshadmin147/ha-nz-parcel-tracker",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/sshadmin147/ha-nz-parcel-tracker/issues",
+  "quality_scale": "silver",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.11.2"
+}

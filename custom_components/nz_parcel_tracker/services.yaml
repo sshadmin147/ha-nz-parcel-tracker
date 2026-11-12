@@ -1,0 +1,22 @@
+track_parcel:
+  fields:
+    tracking_code:
+      required: true
+      example: "EXAMPLE123456"
+      selector:
+        text:
+    carrier:
+      required: false
+      selector:
+        select:
+          options:
+            - nz_post
+          translation_key: carrier
+
+untrack_parcel:
+  fields:
+    tracking_code:
+      required: true
+      example: "EXAMPLE123456"
+      selector:
+        text:
