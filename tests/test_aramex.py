@@ -275,7 +275,7 @@ async def test_async_prepare_loads_the_nz_zone(hass):
 
 
 def test_create_builds_a_session_backed_carrier():
-    assert isinstance(AramexCarrier.create(MagicMock()), AramexCarrier)
+    assert isinstance(AramexCarrier.create(MagicMock(), {}), AramexCarrier)
 
 
 @pytest.mark.parametrize("code", ["MP0085494934", "MP 0085-494934", "39134643030"])

@@ -11,9 +11,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 
+from .carriers import CARRIERS
 from .const import DOMAIN
 
-ATTRIBUTION = "Data provided by the couriers' public tracking services"
+# Each courier may add attribution its terms require.
+ATTRIBUTION = "; ".join(
+    ["Data provided by the couriers' public tracking services"]
+    + [c.attribution for c in CARRIERS.values() if c.attribution]
+)
 
 
 def build_device_info(entry: ConfigEntry) -> DeviceInfo:

@@ -33,7 +33,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up the integration from a config entry."""
     # No auth: courier tracking pages are public, so the HA-managed session is fine.
-    carriers = create_carriers(async_get_clientsession(hass))
+    carriers = create_carriers(async_get_clientsession(hass), entry.data)
     for carrier in carriers.values():
         await carrier.async_prepare(hass)
     coordinator = ParcelCoordinator(hass, carriers, entry)

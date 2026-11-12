@@ -6,8 +6,8 @@ couriers, domain `nz_parcel_tracker`. A fork of
 stripped back to its own tracking logic: no dependency on any other
 integration, shared CI or suite tooling. Not published to HACS.
 
-NZ Post, Aramex (New Zealand only) and Post Haste (customer labels only) are the
-couriers so far. Everything
+NZ Post, Aramex (New Zealand only), Post Haste (customer labels only) and DHL
+(official API, needs the user's own key) are the couriers so far. Everything
 outside `carriers/<courier>/` is courier independent. Keep it that way: no courier names, endpoints, payload
 fields or status wording in the core.
 
@@ -36,6 +36,7 @@ Couriers, in `carriers/`:
 | `carriers/base.py` | The `Carrier` interface and `CarrierApiError` |
 | `carriers/__init__.py` | `CARRIERS` registry, `create_carriers` |
 | `carriers/aramex/` | Aramex NZ: same layout as `nz_post/`; `async_prepare` loads the NZ time zone for the date-only ETA |
+| `carriers/dhl/` | DHL Unified Shipment Tracking API: `api.py` (client with a 5 s call spacer), `mapping.py`, `const.py`, `__init__.py` (`DHLCarrier`) |
 | `carriers/post_haste/` | Post Haste: scrapes the public HTML tracking page; the tracking code is `<customer number> <consignment id>` |
 | `carriers/nz_post/` | NZ Post: `api.py` (HTTP client), `mapping.py` (status maps and normalising), `const.py` (endpoints), `__init__.py` (`NZPostCarrier`) |
 
@@ -52,7 +53,11 @@ entry without `carrier` means `nz_post` (the only courier when it was added).
    this courier without a session. The user always chooses the courier (options
    form dropdown, required `carrier` on `track_parcel`); codes are never used to
    guess it, because couriers share code shapes. Override `async_prepare` for
-   setup that needs the event loop.
+   setup that needs the event loop. A courier that needs a secret sets
+   `config_key` (the entry data key) and implements `async_validate_config`; it
+   is then only `available()` once the user has saved it, and the setup flow, the
+   options flow, the courier dropdown and the service all follow from that. A
+   courier whose terms require attribution sets `attribution`.
 3. List the class in `CARRIERS` in `carriers/__init__.py` and add its key to the
    `carrier` selector in `services.yaml` and the `selector.carrier` names in
    `strings.json` and `translations/en.json`.
@@ -177,3 +182,30 @@ ticket (`product_code` + `serial_number`), charge label (`label_number`) and
 contract bag lookups are not supported, and its newer JSON endpoint
 (`web-api.freightways.makerdesign.co.nz/track?query=`) returned nothing for the
 customer label we tried.
+
+## DHL specifics (`carriers/dhl/`)
+
+Uses DHL's official Unified Shipment Tracking API (`api-eu.dhl.com/track/shipments`)
+with the user's own `DHL-API-Key`, stored in the config entry **data**
+(`dhl_api_key`) and never in options, logs or diagnostics. The key is asked for
+at setup with a **Skip** choice and can be added, changed or removed from the
+options; saving a change reloads the entry because the couriers are built from
+the entry data. Without a key `DHLCarrier.available()` is false, so it is left out
+of `create_carriers`, the courier dropdown and `track_parcel`; stored DHL
+parcels are then skipped with a warning (a removed key does not delete them).
+The standard key allows 250 calls a day and one call every 5 seconds, so
+`DHLApiClient` serialises requests behind a lock and sleeps to keep 5 s between
+calls, even though the coordinator gathers fetches. Setup and key checks cost
+real calls. Status is DHL's five-value `statusCode` only (`pre-transit`,
+`transit`, `delivered`, `failure`, `unknown`): `out_for_delivery` is never
+reached until real parcels show what DHL's finer `status` text means, so a DHL
+parcel does not get the hot 15 minute poll. Timestamps are passed through as DHL
+sends them; one without an offset is local to the event's place and is not
+relabelled. Addresses and free text are dropped from `raw`. `url` is `None` (no
+confirmed deep link). DHL's terms need the attribution
+`DHL data delivered by Deutsche Post DHL Group` on every entity, and delivered
+shipments vanish about 30 days after delivery.
+This was built from DHL's published API description and the ha-dhl project,
+and has not been run against a real DHL key or a real NZ parcel. The keyless DHL
+Express backend in ha-dhl is deliberately not used: it relies on a token
+extracted from DHL's mobile app.

@@ -226,7 +226,9 @@ class ParcelCoordinator(DataUpdateCoordinator[list[dict]]):
             key = item.get(CONF_CARRIER, DEFAULT_CARRIER)
             carrier = self._carriers.get(key)
             if carrier is None:
-                _LOGGER.warning("Skipping %s: unknown courier '%s'", code, key)
+                _LOGGER.warning(
+                    "Skipping %s: courier '%s' is unknown or not set up", code, key
+                )
                 continue
             tracked[code] = carrier
         return tracked

@@ -310,4 +310,4 @@ async def test_async_prepare_loads_the_nz_zone(hass):
 
 
 def test_create_builds_a_session_backed_carrier():
-    assert isinstance(PostHasteCarrier.create(MagicMock()), PostHasteCarrier)
+    assert isinstance(PostHasteCarrier.create(MagicMock(), {}), PostHasteCarrier)

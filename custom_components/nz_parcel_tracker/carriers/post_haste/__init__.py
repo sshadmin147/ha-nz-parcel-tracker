@@ -7,6 +7,7 @@ space or hyphen, for example ``2020119 DESX0026044``.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import tzinfo
 from typing import Any
 
@@ -35,7 +36,9 @@ class PostHasteCarrier(Carrier):
         self._zone = zone
 
     @classmethod
-    def create(cls, session: aiohttp.ClientSession) -> PostHasteCarrier:
+    def create(
+        cls, session: aiohttp.ClientSession, config: Mapping[str, Any]
+    ) -> PostHasteCarrier:
         """Build the carrier around Home Assistant's shared HTTP session."""
         return cls(PostHasteApiClient(session))
 

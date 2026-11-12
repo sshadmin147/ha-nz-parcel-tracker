@@ -4,11 +4,26 @@
     "step": {
       "user": {
         "title": "Set up NZ Parcel Tracker",
-        "description": "Tracking needs no account or postal code — the hub is created right away. Add parcels afterwards via the integration options or the `nz_parcel_tracker.track_parcel` service."
+        "description": "Most couriers need no account. DHL tracking needs your own free DHL API key; there is a step-by-step guide at https://github.com/sshadmin147/ha-nz-parcel-tracker/blob/main/docs/dhl-api-key.md. You can skip this now and add the key later from the integration's options.",
+        "menu_options": {
+          "api_keys": "Add a DHL API key",
+          "skip": "Skip for now"
+        }
+      },
+      "api_keys": {
+        "title": "DHL API key",
+        "description": "Paste your DHL API key. It is checked with DHL before setup finishes. Guide: https://github.com/sshadmin147/ha-nz-parcel-tracker/blob/main/docs/dhl-api-key.md",
+        "data": {
+          "dhl_api_key": "DHL API key"
+        }
       }
     },
     "abort": {
       "already_configured": "NZ Parcel Tracker is already set up."
+    },
+    "error": {
+      "invalid_api_key": "DHL did not accept that API key. Check you copied the whole key from your app on developer.dhl.com.",
+      "cannot_connect": "Could not reach DHL to check the key. Try again in a moment."
     }
   },
   "options": {
@@ -18,6 +33,8 @@
         "menu_options": {
           "add_parcel": "Add a parcel",
           "remove_parcels": "Remove parcels",
+          "api_keys": "Add or change a DHL API key",
+          "remove_api_keys": "Remove a DHL API key",
           "settings": "Settings"
         }
       },
@@ -31,7 +48,7 @@
       },
       "add_parcel": {
         "title": "Add a parcel",
-        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card). For Post Haste, enter the customer number and the consignment ID separated by a space, for example 2020119 DESX0026044.",
+        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card). For Post Haste, enter the customer number and the consignment ID separated by a space, for example 2020119 DESX0026044. DHL only appears in the list once you have added a DHL API key.",
         "data": {
           "carrier": "Courier",
           "tracking_code": "Tracking number"
@@ -46,18 +63,35 @@
         "data": {
           "remove": "Parcels to remove"
         }
+      },
+      "api_keys": {
+        "title": "DHL API key",
+        "description": "Enter a new DHL API key, or leave it blank to keep the current one. Guide: https://github.com/sshadmin147/ha-nz-parcel-tracker/blob/main/docs/dhl-api-key.md",
+        "data": {
+          "dhl_api_key": "DHL API key"
+        }
+      },
+      "remove_api_keys": {
+        "title": "Remove a DHL API key",
+        "description": "Parcels with that courier stop being tracked until a key is added again.",
+        "data": {
+          "remove": "Keys to remove"
+        }
       }
     },
     "error": {
       "invalid_tracking_code": "That does not look like a tracking number for the chosen courier. Check it is just the number, with letters and numbers only.",
       "tracking_code_is_link": "That looks like a web address. Enter just the tracking number, not the link.",
-      "already_tracked": "That parcel is already being tracked."
+      "already_tracked": "That parcel is already being tracked.",
+      "invalid_api_key": "DHL did not accept that API key. Check you copied the whole key from your app on developer.dhl.com.",
+      "cannot_connect": "Could not reach DHL to check the key. Try again in a moment."
     }
   },
   "selector": {
     "carrier": {
       "options": {
         "aramex": "Aramex",
+        "dhl": "DHL",
         "nz_post": "NZ Post",
         "post_haste": "Post Haste"
       }

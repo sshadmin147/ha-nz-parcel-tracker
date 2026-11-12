@@ -18,6 +18,7 @@ To add a courier:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, ClassVar
 
 import aiohttp
@@ -58,11 +59,45 @@ class Carrier(ABC):
     name: ClassVar[str]
     #: Courier-specific payload field names to redact from diagnostics.
     redact_keys: ClassVar[frozenset[str]] = frozenset()
+    #: Config entry data key holding a secret (an API key) the courier needs, or
+    #: ``None`` when it needs nothing. A courier with a ``config_key`` is only
+    #: available once the user has provided it.
+    config_key: ClassVar[str | None] = None
+    #: Attribution text the courier's terms require, shown on every entity.
+    attribution: ClassVar[str | None] = None
 
     @classmethod
     @abstractmethod
-    def create(cls, session: aiohttp.ClientSession) -> Carrier:
-        """Build the courier around Home Assistant's shared HTTP session."""
+    def create(
+        cls, session: aiohttp.ClientSession, config: Mapping[str, Any]
+    ) -> Carrier:
+        """Build the courier around Home Assistant's shared HTTP session.
+
+        ``config`` is the config entry's data, for couriers that need a setting
+        such as an API key. Most couriers ignore it.
+        """
+
+    @classmethod
+    def available(cls, config: Mapping[str, Any]) -> bool:
+        """Whether this courier can be used with the entry's ``config``.
+
+        True unless the courier needs an API key (``config_key``) the user has not
+        provided. An unavailable courier is left out of the courier choices and is
+        not polled.
+        """
+        return cls.config_key is None or bool(config.get(cls.config_key))
+
+    @classmethod
+    async def async_validate_config(
+        cls, session: aiohttp.ClientSession, value: str
+    ) -> str | None:
+        """Check a ``config_key`` value with the courier.
+
+        Return ``None`` when it is accepted, or the name of an error from
+        ``strings.json`` (``invalid_api_key``, ``cannot_connect``). Only called
+        for couriers that set ``config_key``.
+        """
+        return None
 
     @abstractmethod
     async def async_get_parcel(self, tracking_code: str) -> dict[str, Any] | None:

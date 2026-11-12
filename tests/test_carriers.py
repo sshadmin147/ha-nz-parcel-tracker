@@ -57,7 +57,7 @@ class FakeCarrier(Carrier):
         self.fetch = AsyncMock(side_effect=self._default_fetch)
 
     @classmethod
-    def create(cls, session):
+    def create(cls, session, config):
         return cls()
 
     @classmethod
@@ -207,7 +207,7 @@ async def test_unknown_carrier_is_skipped_with_a_warning(hass, caplog):
         data = await coordinator._async_update_data()
 
     assert [p["barcode"] for p in data] == [ACTIVE_CODE]
-    assert "unknown courier 'removed_courier'" in caplog.text
+    assert "courier 'removed_courier' is unknown or not set up" in caplog.text
 
 
 async def test_failing_carrier_is_named_in_the_log_and_keeps_cached_data(hass, caplog):
@@ -255,5 +255,5 @@ async def test_make_coordinator_helper_uses_the_nz_post_carrier(hass):
 
 @pytest.mark.parametrize("carrier", list(CARRIERS))
 def test_every_registered_carrier_can_be_created(carrier):
-    instance = CARRIERS[carrier].create(AsyncMock())
+    instance = CARRIERS[carrier].create(AsyncMock(), {"dhl_api_key": "key"})
     assert isinstance(instance, Carrier)

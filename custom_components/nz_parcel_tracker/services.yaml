@@ -12,6 +12,7 @@ track_parcel:
         select:
           options:
             - aramex
+            - dhl
             - nz_post
             - post_haste
           translation_key: carrier

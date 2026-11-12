@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking) [Aramex New Zealand](https://www.aramex.co.nz/tools/track) and [Post Haste](https://posthaste.co.nz/track/) customer labels; the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
+A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking) [Aramex New Zealand](https://www.aramex.co.nz/tools/track), [Post Haste](https://posthaste.co.nz/track/) customer labels and [DHL](https://www.dhl.com/) (with your own free DHL API key); the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
 
 ## Contents
 
@@ -49,8 +49,9 @@ A custom Home Assistant integration that tracks parcels from New Zealand courier
 | NZ Post | `nz_post` | 8 to 30 letters and numbers (spaces and hyphens are ignored) | Status, status history and a link to the public tracker. No delivery window, pickup point, sender, receiver, weight or dimensions. |
 | Aramex (New Zealand) | `aramex` | 8 to 30 letters and numbers | Status, status history, a link to the public tracker and Aramex's estimated delivery date (an all-day window, shown on the calendar). No pickup point, sender, receiver, weight or dimensions. |
 | Post Haste (customer labels) | `post_haste` | The customer number and the consignment ID, separated by a space, for example `2020119 DESX0026044` (both are in the tracking link the sender emails) | Status, status history and a link to the public tracker. No delivery window, pickup point, sender, receiver, weight or dimensions. Prepaid-ticket and charge-label consignments are not supported. |
+| DHL | `dhl` | 8 to 30 letters and numbers, for example a 10 digit Express waybill or `JJD...` | Status (pre-transit, in transit, delivered, problem), status history, DHL's delivery estimate when it gives one (shown on the calendar) and weight when known. **Needs your own DHL API key**, see [Setting up DHL](docs/dhl-api-key.md). No pickup point, sender, receiver or tracking link. |
 
-You always choose the courier a parcel is with; it is never guessed from the code. Both couriers use similar-looking codes, so guessing would sometimes be wrong.
+You always choose the courier a parcel is with; it is never guessed from the code. Couriers use similar-looking codes, so guessing would sometimes be wrong.
 
 ## Installation
 
@@ -67,7 +68,7 @@ Copy `custom_components/nz_parcel_tracker` into your `config/custom_components/`
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=nz_parcel_tracker)
 
-Or set it up by hand: add the integration via **Settings → Devices & Services → Add Integration → NZ Parcel Tracker**. There is nothing to fill in: the hub is created immediately.
+Or set it up by hand: add the integration via **Settings → Devices & Services → Add Integration → NZ Parcel Tracker**. The only thing it asks is an optional **DHL API key**; choose **Skip for now** if you do not use DHL or do not have a key yet. The step-by-step guide to getting one is in [Setting up DHL](docs/dhl-api-key.md). Everything else needs no setup, and a skipped key can be added later from **Configure**.
 
 Then add parcels via the integration's **Configure** dialog (choose the courier, then enter the tracking number), the [`nz_parcel_tracker.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
 
@@ -77,6 +78,7 @@ Open **Configure** on the integration entry:
 
 | Section | Option | Default | Description |
 |---|---|---|---|
+| DHL | Add or change / Remove a DHL API key | none | Store, replace or remove the DHL API key (see [Setting up DHL](docs/dhl-api-key.md)). Changing a key reloads the integration. DHL only appears in the courier list while a key is saved. |
 | Parcels | Add a parcel / Remove parcels | none | Add a parcel by choosing its courier and entering the tracking number, or remove tracked parcels. Changes apply immediately, no restart. |
 | Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
@@ -141,7 +143,7 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `nz_parcel_tracker.track_parcel` | `tracking_code`, `carrier` (required) | Start tracking a parcel. `carrier` is the courier key (`nz_post`, `aramex`) and the code must fit that courier (see [Supported couriers](#supported-couriers)); web addresses are rejected |
+| `nz_parcel_tracker.track_parcel` | `tracking_code`, `carrier` (required) | Start tracking a parcel. `carrier` is the courier key (`nz_post`, `aramex`, `post_haste`, `dhl`) and the code must fit that courier (see [Supported couriers](#supported-couriers)); web addresses are rejected |
 | `nz_parcel_tracker.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
 
 ## Examples

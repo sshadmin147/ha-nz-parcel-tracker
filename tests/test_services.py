@@ -185,6 +185,46 @@ async def test_track_parcel_rejects_an_unknown_courier(hass):
         )
 
 
+async def test_track_parcel_refuses_dhl_without_a_key(hass):
+    entry = await _setup(hass)
+    with pytest.raises(ServiceValidationError, match="needs an API key"):
+        await hass.services.async_call(
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "1234567890", CONF_CARRIER: "dhl"},
+            blocking=True,
+        )
+    assert entry.options[CONF_PARCELS] == []
+
+
+async def test_track_parcel_accepts_dhl_with_a_key(hass):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        data={"dhl_api_key": "k"},
+        options={CONF_PARCELS: []},
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.nz_parcel_tracker.carriers.dhl.DHLApiClient.async_get_parcel",
+            new=AsyncMock(return_value=None),
+        ),
+        patch.object(hass.config_entries, "async_schedule_reload"),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        await hass.services.async_call(
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "1234567890", CONF_CARRIER: "dhl"},
+            blocking=True,
+        )
+    assert entry.options[CONF_PARCELS] == [
+        {CONF_TRACKING_CODE: "1234567890", CONF_CARRIER: "dhl"}
+    ]
+
+
 async def test_track_parcel_stores_the_chosen_courier(hass):
     entry = await _setup(hass)
     await hass.services.async_call(

@@ -12,7 +12,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
-from .carriers import CARRIERS
+from .carriers import CARRIERS, available_carriers
 from .codes import looks_like_link, normalize_tracking_code, valid_tracking_code
 from .const import CONF_CARRIER, CONF_PARCELS, CONF_TRACKING_CODE, DOMAIN
 
@@ -49,12 +49,17 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 "number, not the link."
             )
         carrier = call.data[CONF_CARRIER]
+        entry = _resolve_entry(hass)
+        if carrier not in available_carriers(entry.data):
+            raise ServiceValidationError(
+                f"{CARRIERS[carrier].name} is not set up: it needs an API key. "
+                "Add one in the integration's options."
+            )
         if not valid_tracking_code(tracking_code, carrier):
             raise ServiceValidationError(
                 f"'{tracking_code}' is not a valid tracking code for "
                 f"{CARRIERS[carrier].name} (check the number and try again)"
             )
-        entry = _resolve_entry(hass)
 
         parcels = [dict(p) for p in entry.options.get(CONF_PARCELS, [])]
         if any(p[CONF_TRACKING_CODE] == tracking_code for p in parcels):

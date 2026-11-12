@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import tzinfo
 import re
 from typing import Any
@@ -36,7 +37,9 @@ class AramexCarrier(Carrier):
         self._zone = zone
 
     @classmethod
-    def create(cls, session: aiohttp.ClientSession) -> AramexCarrier:
+    def create(
+        cls, session: aiohttp.ClientSession, config: Mapping[str, Any]
+    ) -> AramexCarrier:
         """Build the carrier around Home Assistant's shared HTTP session."""
         return cls(AramexApiClient(session))
 

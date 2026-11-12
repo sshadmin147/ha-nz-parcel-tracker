@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import re
 from typing import Any
 
@@ -42,7 +43,9 @@ class NZPostCarrier(Carrier):
         self._client = client
 
     @classmethod
-    def create(cls, session: aiohttp.ClientSession) -> NZPostCarrier:
+    def create(
+        cls, session: aiohttp.ClientSession, config: Mapping[str, Any]
+    ) -> NZPostCarrier:
         """Build the carrier around Home Assistant's shared HTTP session."""
         return cls(NZPostApiClient(session))
 
