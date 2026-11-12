@@ -22,7 +22,7 @@ What is still to do for this fork. Tick items off or delete them as they are don
 `hacs.json` is set up for zip releases (`"zip_release": true`, `"filename": "nz_parcel_tracker.zip"`), so each release needs a zip attached.
 
 - [ ] Bump `version` in `custom_components/nz_parcel_tracker/manifest.json`.
-- [ ] Update the README and `CLAUDE.md` for the change.
+- [ ] Update the README, `docs/technical.md` and `CLAUDE.md` for the change.
 - [ ] Zip the **contents** of `custom_components/nz_parcel_tracker/` (so `manifest.json` is at the top of the zip) as `nz_parcel_tracker.zip`.
 - [ ] Tag the commit (`vX.Y.Z`), create a GitHub release, and attach the zip.
 - [ ] Automate the zip and release in the workflow above once the manual steps are stable.
@@ -49,7 +49,7 @@ Done: the code is split into a courier-independent core and a `carriers/` packag
 - [ ] Pick the next courier (for example CourierPost) and check it has a usable public tracking endpoint and a stable payload before writing any code.
 - [ ] Decide whether polling should be per courier (separate rate limits and backoff). The 429 backoff is currently shared across all couriers.
 - [ ] Rename the NZ Post specific names that remain in the core if any appear (the core should have none; `tests/test_carriers.py` checks it works with a fake second courier).
-- [ ] Update the README (*Supported couriers* table), `CLAUDE.md` and the examples for every courier added.
+- [ ] Update the README (*Supported couriers* table), `docs/technical.md` (courier details), `CLAUDE.md` and the examples for every courier added.
 
 ## 6. Switching my Home Assistant over (when this fork is ready)
 

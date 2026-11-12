@@ -67,10 +67,12 @@ entry without `carrier` means `nz_post` (the only courier when it was added).
 5. Add tests: the mapping, the client (see `tests/test_api.py`) and the code
    format. `tests/test_carriers.py` drives the core with a fake second courier;
    extend it if the core grows a courier-dependent path.
-6. Update `README.md` (the *Supported couriers* table) and this file.
+6. Update `README.md` (the short *Supported couriers* table), `docs/technical.md` (the
+   detailed courier table and *How each courier is read*) and this file.
 
 Dynamic polling, options, entities, events and services are documented in
-`README.md`; keep that file and this one in step with any code change.
+`docs/technical.md` (the `README.md` is the short, non-technical overview); keep
+those files and this one in step with any code change.
 `TODO.md` lists the outstanding work (release steps, robustness, adding other
 couriers); update it when something is done or a new task turns up.
 
