@@ -1,11 +1,16 @@
-"""Post Haste public tracking page client.
+"""Client for Freightways' "ITNG" public tracking pages.
+
+Post Haste and NZ Couriers (both Freightways brands) publish the same
+server-rendered tracking page, keyed on a customer number and a consignment ID.
+Only the host differs, so the page client lives here and each courier supplies
+its URL and its error class.
 
 Keeps the contract the coordinator relies on:
 
 * ``async_get_parcel`` returns a small dict (the page's events) on success,
-* returns ``None`` when Post Haste says it has no information for the
+* returns ``None`` when the page says it has no information for the
   consignment (a normal, expected state, never an error),
-* raises :class:`PostHasteApiError` for anything else, including a page whose
+* raises the courier's error class for anything else, including a page whose
   layout we do not recognise, with ``status_code`` and ``retry_after`` set as for
   the other couriers,
 * lets ``aiohttp.ClientError`` propagate untouched.
@@ -15,12 +20,11 @@ from __future__ import annotations
 
 from html import unescape
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 import aiohttp
 
 from ..base import CarrierApiError
-from .const import TRACKING_URL
 
 # One entry of the "Travel history": a title such as ``Pickup`` and the time in
 # brackets, for example ``<h3 class="mk-transaction-title">Pickup<em> (11:34AM
@@ -31,12 +35,6 @@ _EVENT_RE = re.compile(
 )
 _TAG_RE = re.compile(r"<[^>]*>")
 _NO_INFORMATION = "no information available for the consignment"
-
-
-class PostHasteApiError(CarrierApiError):
-    """Raised when a Post Haste request returns an unexpected response."""
-
-    carrier_name = "Post Haste"
 
 
 def _text(value: str) -> str:
@@ -55,8 +53,13 @@ def parse_events(page: str) -> list[dict[str, str]]:
     ]
 
 
-class PostHasteApiClient:
-    """Client for the public Post Haste customer-label tracking page."""
+class ITNGApiClient:
+    """Reads one courier's customer-label tracking page."""
+
+    #: The courier's ``ITNG_TAndTServlet`` URL.
+    url: ClassVar[str]
+    #: The courier's error class (a :class:`CarrierApiError` subclass).
+    error_class: ClassVar[type[CarrierApiError]]
 
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialise the client with an aiohttp session."""
@@ -65,9 +68,10 @@ class PostHasteApiClient:
     async def async_get_parcel(
         self, customer_number: str, consignment_id: str
     ) -> dict[str, Any] | None:
-        """Fetch one consignment's events, or ``None`` if Post Haste has none."""
+        """Fetch one consignment's events, or ``None`` if there is no information."""
+        error = self.error_class
         async with self._session.get(
-            TRACKING_URL,
+            self.url,
             params={
                 "page": "1",
                 "Key_Type": "CustomerLabel",
@@ -84,13 +88,9 @@ class PostHasteApiClient:
                     )
                 except ValueError:
                     retry_after = None  # an HTTP-date, not seconds
-                raise PostHasteApiError(
-                    "HTTP 429", status_code=429, retry_after=retry_after
-                )
+                raise error("HTTP 429", status_code=429, retry_after=retry_after)
             if response.status != 200:
-                raise PostHasteApiError(
-                    f"HTTP {response.status}", status_code=response.status
-                )
+                raise error(f"HTTP {response.status}", status_code=response.status)
             page = await response.text()
 
         events = parse_events(page)
@@ -98,4 +98,4 @@ class PostHasteApiClient:
             return {"events": events}
         if _NO_INFORMATION in page.lower():
             return None
-        raise PostHasteApiError("unrecognised page (layout may have changed)")
+        raise error("unrecognised page (layout may have changed)")

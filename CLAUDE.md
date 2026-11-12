@@ -6,7 +6,7 @@ couriers, domain `nz_parcel_tracker`. A fork of
 stripped back to its own tracking logic: no dependency on any other
 integration, shared CI or suite tooling. Not published to HACS.
 
-NZ Post, Aramex (New Zealand only), Post Haste (customer labels only) and DHL
+NZ Post, Aramex (New Zealand only), Post Haste and NZ Couriers (customer labels only) and DHL
 (official API, needs the user's own key) are the couriers so far. Everything
 outside `carriers/<courier>/` is courier independent. Keep it that way: no courier names, endpoints, payload
 fields or status wording in the core.
@@ -37,7 +37,8 @@ Couriers, in `carriers/`:
 | `carriers/__init__.py` | `CARRIERS` registry, `create_carriers` |
 | `carriers/aramex/` | Aramex NZ: same layout as `nz_post/`; `async_prepare` loads the NZ time zone for the date-only ETA |
 | `carriers/dhl/` | DHL Unified Shipment Tracking API: `api.py` (client with a 5 s call spacer), `mapping.py`, `const.py`, `__init__.py` (`DHLCarrier`) |
-| `carriers/post_haste/` | Post Haste: scrapes the public HTML tracking page; the tracking code is `<customer number> <consignment id>` |
+| `carriers/itng/` | Shared by Post Haste and NZ Couriers (both Freightways): the HTML page client, status mapping and `ITNGCarrier` base; the tracking code is `<customer number> <consignment id>` |
+| `carriers/post_haste/`, `carriers/nz_couriers/` | One small module each: key, name, page URL and error class on top of `itng` |
 | `carriers/nz_post/` | NZ Post: `api.py` (HTTP client), `mapping.py` (status maps and normalising), `const.py` (endpoints), `__init__.py` (`NZPostCarrier`) |
 
 Stored parcels are `{tracking_code, carrier}` dicts in the entry options. An
@@ -163,25 +164,32 @@ payload carries recipient data, so `raw` keeps only code, text and timestamp and
 codes and label formats come from the upstream repo and have not been checked
 against real parcels here.
 
-## Post Haste specifics (`carriers/post_haste/`)
+## Post Haste and NZ Couriers specifics (`carriers/itng/`)
 
-Post Haste has no JSON API for customer-printed labels, so the client reads the
-server-rendered tracking page
-(`tools.posthaste.co.nz/phl/servlet/ITNG_TAndTServlet?Key_Type=CustomerLabel`)
-with a regex on the `mk-transaction-title` headings: **layout changes will break
-it**, which is why a page with no events and no "no information available"
-message raises an error instead of reading as "unknown". The page is keyed on two
-values, so the stored `tracking_code` is `<customer number> <consignment id>`
-(space or hyphen). Event times are NZ local (`11:34AM 24/8/2026`), converted in
-`Pacific/Auckland` via `async_prepare`. Statuses are keyed on the entry title:
-`Pickup` (in transit), `On Board` (out for delivery, inferred from timing),
-`Delivery` (delivered); anything else is `unknown` plus a one-shot warning. The
-entry text names the courier and the signer, so only title and time are kept.
-Verified against one real delivered parcel (2026-11-12). Post Haste's prepaid
-ticket (`product_code` + `serial_number`), charge label (`label_number`) and
-contract bag lookups are not supported, and its newer JSON endpoint
-(`web-api.freightways.makerdesign.co.nz/track?query=`) returned nothing for the
-customer label we tried.
+Both are Freightways brands with the same customer-label tracking page, so one
+implementation serves both (`ITNGCarrier`, `ITNGApiClient`, `itng/mapping.py`);
+each courier only sets its key, name, page URL and error class. There is no JSON
+API for customer labels, so the client reads the server-rendered page
+(`ITNG_TAndTServlet?Key_Type=CustomerLabel`) with a regex on the
+`mk-transaction-title` headings: **layout changes will break it**, which is why a
+page with no events and no "no information available" message raises an error
+instead of reading as "unknown". The page is keyed on two values, so the stored
+`tracking_code` is `<customer number> <consignment id>` (space or hyphen). Event
+times are NZ local (`11:34AM 24/8/2026`), converted in `Pacific/Auckland` via
+`async_prepare`. Statuses are keyed on the entry title: `Pickup` (in transit),
+`On Board` (out for delivery, inferred from timing), `Delivery` (delivered);
+`Status` is informational ("Item has been re-ticketed") and never decides the
+parcel's status or warns; any other title is `unknown` plus a one-shot warning.
+The status is that of the newest non-informational event, so a parcel that was
+delivered, picked up again and delivered once more reads as delivered at the last
+delivery. The entry text names the courier and the signer, so only title and time
+are kept. Verified against one real delivered parcel for each courier
+(2026-11-12). Prepaid ticket (`product_code` + `serial_number`), charge label,
+barcode and contract bag lookups are not supported. The Freightways JSON endpoints
+(`web-api.freightways.makerdesign.co.nz/track?query=` for Post Haste and
+`public-website.ep-prod.freightways.co.nz/public-website/v1/carriers/<Carrier>/tracking-events`
+for the Post Haste and NZ Couriers sites) are keyless but returned nothing for the
+customer labels we tried.
 
 ## DHL specifics (`carriers/dhl/`)
 

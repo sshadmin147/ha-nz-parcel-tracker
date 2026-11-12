@@ -48,7 +48,7 @@
       },
       "add_parcel": {
         "title": "Add a parcel",
-        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card). For Post Haste, enter the customer number and the consignment ID separated by a space, for example 2020119 DESX0026044. DHL only appears in the list once you have added a DHL API key.",
+        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card). For Post Haste or NZ Couriers (customer labels only), enter the customer number and the consignment ID separated by a space, for example 2020119 DESX0026044. DHL only appears in the list once you have added a DHL API key.",
         "data": {
           "carrier": "Courier",
           "tracking_code": "Tracking number"
@@ -92,6 +92,7 @@
       "options": {
         "aramex": "Aramex",
         "dhl": "DHL",
+        "nz_couriers": "NZ Couriers",
         "nz_post": "NZ Post",
         "post_haste": "Post Haste"
       }
