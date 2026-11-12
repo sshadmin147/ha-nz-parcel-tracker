@@ -16,46 +16,9 @@
       "init": {
         "title": "NZ Parcel Tracker options",
         "menu_options": {
-          "parcels": "Parcels",
+          "add_parcel": "Add a parcel",
+          "remove_parcels": "Remove parcels",
           "settings": "Settings"
-        },
-        "sections": {
-          "parcels": {
-            "name": "Parcels",
-            "data": {
-              "add": "Add a parcel",
-              "remove": "Remove parcels"
-            },
-            "data_description": {
-              "add": "Enter a tracking code to start tracking it. You find it on the shipping confirmation or the missed-delivery card."
-            }
-          },
-          "delivered": {
-            "name": "Delivered parcels",
-            "data": {
-              "delivered_filter_type": "Filter by",
-              "delivered_filter_amount": "Amount"
-            },
-            "data_description": {
-              "delivered_filter_type": "Show delivered parcels from the last X days, or limit to the X most recent.",
-              "delivered_filter_amount": "Number of days or parcels to show."
-            }
-          },
-          "history": {
-            "name": "Parcel history",
-            "data": {
-              "include_history": "Include status history"
-            },
-            "data_description": {
-              "include_history": "Add a per-parcel history attribute listing each status update (timestamp, status, original text). Off by default."
-            }
-          }
-        }
-      },
-      "parcels": {
-        "title": "Manage parcels",
-        "data": {
-          "tracking_codes": "Tracking codes"
         }
       },
       "settings": {
@@ -65,10 +28,28 @@
           "delivered_filter_amount": "Delivered parcels: amount",
           "include_history": "Include status history"
         }
+      },
+      "add_parcel": {
+        "title": "Add a parcel",
+        "description": "Choose the courier the parcel is with, then enter its tracking number (from the shipping confirmation or the missed-delivery card).",
+        "data": {
+          "carrier": "Courier",
+          "tracking_code": "Tracking number"
+        },
+        "data_description": {
+          "tracking_code": "Just the number, not a link."
+        }
+      },
+      "remove_parcels": {
+        "title": "Remove parcels",
+        "description": "Select the parcels to stop tracking.",
+        "data": {
+          "remove": "Parcels to remove"
+        }
       }
     },
     "error": {
-      "invalid_tracking_code": "That does not look like a tracking code for any supported courier. Check it is just the number, with letters and numbers only.",
+      "invalid_tracking_code": "That does not look like a tracking number for the chosen courier. Check it is just the number, with letters and numbers only.",
       "tracking_code_is_link": "That looks like a web address. Enter just the tracking number, not the link.",
       "already_tracked": "That parcel is already being tracked."
     }
@@ -76,6 +57,7 @@
   "selector": {
     "carrier": {
       "options": {
+        "aramex": "Aramex",
         "nz_post": "NZ Post"
       }
     },
@@ -97,7 +79,7 @@
         },
         "carrier": {
           "name": "Courier",
-          "description": "Which courier the parcel is with. Leave empty to work it out from the code."
+          "description": "Which courier the parcel is with."
         }
       }
     },

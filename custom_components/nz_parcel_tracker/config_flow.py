@@ -15,7 +15,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 import voluptuous as vol
 
-from .carriers import detect_carrier
+from .carriers import CARRIERS
 from .codes import looks_like_link, normalize_tracking_code, valid_tracking_code
 from .const import (
     CONF_CARRIER,
@@ -37,16 +37,6 @@ _LOGGER = logging.getLogger(__name__)
 def _current_parcels(entry: ConfigEntry) -> list[dict[str, str]]:
     """Return a mutable copy of the tracked parcels list."""
     return [dict(item) for item in entry.options.get(CONF_PARCELS, [])]
-
-
-def _clean_tracking_codes(values: list[str] | None) -> list[str]:
-    """Normalise, drop blanks, and de-duplicate tracking codes."""
-    codes: list[str] = []
-    for value in values or []:
-        code = normalize_tracking_code(value)
-        if code and code not in codes:
-            codes.append(code)
-    return codes
 
 
 class ParcelTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -94,67 +84,100 @@ class ParcelTrackerOptionsFlowHandler(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Offer parcel management separately from integration settings."""
-        return self.async_show_menu(
-            step_id="init", menu_options=["parcels", "settings"]
-        )
+        """Offer adding or removing parcels, and the integration settings."""
+        menu = ["add_parcel"]
+        if _current_parcels(self.config_entry):
+            menu.append("remove_parcels")
+        menu.append("settings")
+        return self.async_show_menu(step_id="init", menu_options=menu)
 
-    async def async_step_parcels(
+    async def async_step_add_parcel(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show and handle the complete tracked-code list."""
+        """Add one parcel; the courier is always chosen, never guessed."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            codes = _clean_tracking_codes(user_input.get("tracking_codes"))
-            if any(looks_like_link(code) for code in codes):
+            carrier = user_input[CONF_CARRIER]
+            code = normalize_tracking_code(user_input[CONF_TRACKING_CODE])
+            parcels = _current_parcels(self.config_entry)
+            if looks_like_link(code):
                 errors["base"] = "tracking_code_is_link"
-            elif any(not valid_tracking_code(code) for code in codes):
+            elif not valid_tracking_code(code, carrier):
                 errors["base"] = "invalid_tracking_code"
+            elif any(p[CONF_TRACKING_CODE] == code for p in parcels):
+                errors["base"] = "already_tracked"
             else:
-                carriers = {
-                    p[CONF_TRACKING_CODE]: p.get(CONF_CARRIER, DEFAULT_CARRIER)
-                    for p in _current_parcels(self.config_entry)
-                }
-                return self.async_create_entry(
-                    title="",
-                    data={
-                        CONF_PARCELS: [
-                            {
-                                CONF_TRACKING_CODE: code,
-                                CONF_CARRIER: carriers.get(code)
-                                or detect_carrier(code)
-                                or DEFAULT_CARRIER,
-                            }
-                            for code in codes
-                        ],
-                        CONF_DELIVERED_FILTER_TYPE: self.config_entry.options.get(
-                            CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-                        ),
-                        CONF_DELIVERED_FILTER_AMOUNT: self.config_entry.options.get(
-                            CONF_DELIVERED_FILTER_AMOUNT,
-                            DEFAULT_DELIVERED_FILTER_AMOUNT,
-                        ),
-                        CONF_INCLUDE_HISTORY: self.config_entry.options.get(
-                            CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY
-                        ),
-                    },
-                )
-        current_codes = [
-            p[CONF_TRACKING_CODE] for p in _current_parcels(self.config_entry)
-        ]
+                parcels.append({CONF_TRACKING_CODE: code, CONF_CARRIER: carrier})
+                return self._save_parcels(parcels)
         schema = vol.Schema(
             {
-                vol.Optional("tracking_codes"): selector.TextSelector(
-                    selector.TextSelectorConfig(multiple=True)
-                )
+                vol.Required(CONF_CARRIER): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(CARRIERS),
+                        translation_key=CONF_CARRIER,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_TRACKING_CODE): selector.TextSelector(),
             }
         )
         return self.async_show_form(
-            step_id="parcels",
-            data_schema=self.add_suggested_values_to_schema(
-                schema, {"tracking_codes": current_codes}
-            ),
+            step_id="add_parcel",
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
             errors=errors,
+        )
+
+    async def async_step_remove_parcels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Stop tracking the selected parcels."""
+        parcels = _current_parcels(self.config_entry)
+        if user_input is not None:
+            remove = set(user_input.get("remove", []))
+            return self._save_parcels(
+                [p for p in parcels if p[CONF_TRACKING_CODE] not in remove]
+            )
+        options = [
+            selector.SelectOptionDict(
+                value=p[CONF_TRACKING_CODE],
+                label=(
+                    f"{CARRIERS[p.get(CONF_CARRIER, DEFAULT_CARRIER)].name}: "
+                    if p.get(CONF_CARRIER, DEFAULT_CARRIER) in CARRIERS
+                    else ""
+                )
+                + p[CONF_TRACKING_CODE],
+            )
+            for p in parcels
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required("remove"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="remove_parcels", data_schema=schema)
+
+    def _save_parcels(self, parcels: list[dict[str, str]]) -> ConfigFlowResult:
+        """Save a new parcel list, keeping every other option as it is."""
+        return self.async_create_entry(
+            title="",
+            data={
+                CONF_PARCELS: parcels,
+                CONF_DELIVERED_FILTER_TYPE: self.config_entry.options.get(
+                    CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
+                ),
+                CONF_DELIVERED_FILTER_AMOUNT: self.config_entry.options.get(
+                    CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT
+                ),
+                CONF_INCLUDE_HISTORY: self.config_entry.options.get(
+                    CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY
+                ),
+            },
         )
 
     async def async_step_settings(

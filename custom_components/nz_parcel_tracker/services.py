@@ -12,7 +12,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
-from .carriers import CARRIERS, detect_carrier
+from .carriers import CARRIERS
 from .codes import looks_like_link, normalize_tracking_code, valid_tracking_code
 from .const import CONF_CARRIER, CONF_PARCELS, CONF_TRACKING_CODE, DOMAIN
 
@@ -22,7 +22,7 @@ SERVICE_UNTRACK_PARCEL = "untrack_parcel"
 _TRACK_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_TRACKING_CODE): cv.string,
-        vol.Optional(CONF_CARRIER): vol.In(list(CARRIERS)),
+        vol.Required(CONF_CARRIER): vol.In(list(CARRIERS)),
     }
 )
 _UNTRACK_SCHEMA = vol.Schema({vol.Required(CONF_TRACKING_CODE): cv.string})
@@ -48,14 +48,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 "That looks like a web address. Enter just the tracking "
                 "number, not the link."
             )
-        carrier = call.data.get(CONF_CARRIER)
+        carrier = call.data[CONF_CARRIER]
         if not valid_tracking_code(tracking_code, carrier):
             raise ServiceValidationError(
-                f"'{tracking_code}' is not a valid tracking code"
-                + (f" for {CARRIERS[carrier].name}" if carrier else "")
-                + " (check the number and try again)"
+                f"'{tracking_code}' is not a valid tracking code for "
+                f"{CARRIERS[carrier].name} (check the number and try again)"
             )
-        carrier = carrier or detect_carrier(tracking_code)
         entry = _resolve_entry(hass)
 
         parcels = [dict(p) for p in entry.options.get(CONF_PARCELS, [])]

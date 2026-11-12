@@ -21,6 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
 import aiohttp
+from homeassistant.core import HomeAssistant
 
 
 class CarrierApiError(Exception):
@@ -79,6 +80,13 @@ class Carrier(ABC):
         """Whether ``code`` (already stripped and upper-cased) has this courier's shape.
 
         A class method so codes can be checked without building the courier.
+        """
+
+    async def async_prepare(self, hass: HomeAssistant) -> None:  # noqa: B027
+        """Do any setup that must run on the event loop (default: nothing).
+
+        Called once per config entry before the first refresh, for example to
+        load a time zone without blocking.
         """
 
     @abstractmethod

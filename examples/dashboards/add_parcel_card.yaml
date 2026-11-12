@@ -27,6 +27,7 @@ nz_post_track_new_parcel:
       value_template: "{{ states('input_text.nz_post_new_parcel') | trim != '' }}"
     - action: nz_parcel_tracker.track_parcel
       data:
+        carrier: nz_post
         tracking_code: "{{ states('input_text.nz_post_new_parcel') | trim }}"
     - action: input_text.set_value
       target:

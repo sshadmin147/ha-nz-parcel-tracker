@@ -17,7 +17,6 @@ from custom_components.nz_parcel_tracker.carriers import (
     CARRIERS,
     Carrier,
     CarrierApiError,
-    detect_carrier,
 )
 from custom_components.nz_parcel_tracker.carriers.nz_post import (
     NZPostApiError,
@@ -119,16 +118,11 @@ def test_registry_keys_match_each_carriers_key():
     assert all(carrier.name for carrier in CARRIERS.values())
 
 
-def test_detect_carrier_finds_nz_post_and_rejects_nonsense():
-    assert detect_carrier("00794210392837795918") == "nz_post"
-    assert detect_carrier("ABC") is None
-    assert detect_carrier("") is None
-
-
 def test_valid_tracking_code_can_be_limited_to_one_carrier():
     assert valid_tracking_code("EXAMPLE123456", "nz_post")
     assert not valid_tracking_code("EXAMPLE123456", "no_such_carrier")
     assert not valid_tracking_code("https://example.com/EXAMPLE123456", "nz_post")
+    assert valid_tracking_code("MP0085494934", "aramex")
 
 
 def test_nz_post_carrier_implements_the_interface():

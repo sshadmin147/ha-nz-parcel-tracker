@@ -25,20 +25,22 @@ def test_normalize_tracking_code_strips_and_uppercases():
 
 
 def test_valid_tracking_code_accepts_plain_references():
-    assert valid_tracking_code("EXAMPLE123456")
-    assert valid_tracking_code("00794210392837795918")
-    assert valid_tracking_code("FX0003653338")
-    assert valid_tracking_code("LH440267135AU")
-    assert valid_tracking_code("UPU-RA123456789NZ")
-    assert valid_tracking_code("example 123 456")
+    assert valid_tracking_code("EXAMPLE123456", "nz_post")
+    assert valid_tracking_code("00794210392837795918", "nz_post")
+    assert valid_tracking_code("FX0003653338", "nz_post")
+    assert valid_tracking_code("LH440267135AU", "nz_post")
+    assert valid_tracking_code("UPU-RA123456789NZ", "nz_post")
+    assert valid_tracking_code("example 123 456", "nz_post")
+    assert valid_tracking_code("MP0085494934", "aramex")
 
 
 def test_valid_tracking_code_rejects_bad_shapes():
-    assert not valid_tracking_code("")
-    assert not valid_tracking_code("ABC")
-    assert not valid_tracking_code("A" * 31)
-    assert not valid_tracking_code("EXAMPLE123456|SHOES")
-    assert not valid_tracking_code("EXAMPLE_123456")
+    assert not valid_tracking_code("", "nz_post")
+    assert not valid_tracking_code("ABC", "nz_post")
+    assert not valid_tracking_code("A" * 31, "nz_post")
+    assert not valid_tracking_code("EXAMPLE123456|SHOES", "nz_post")
+    assert not valid_tracking_code("EXAMPLE_123456", "nz_post")
+    assert not valid_tracking_code("EXAMPLE123456", "no_such_courier")
 
 
 def test_links_are_rejected_and_detected():
@@ -49,7 +51,7 @@ def test_links_are_rejected_and_detected():
         "HTTP://WWW.TRACKANDTRACE.COURIERPOST.CO.NZ/SEARCH/00894210392937491823"
     )
     assert not looks_like_link("00794210392837795918")
-    assert not valid_tracking_code(link)
+    assert not valid_tracking_code(link, "nz_post")
 
 
 async def test_user_flow_creates_hub_without_input(hass):
@@ -94,54 +96,71 @@ def _settings_input(
     }
 
 
-async def _open_options_step(hass, entry, step_id: str):
+async def _open_options_step(hass, entry, step_id: str, menu=None):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == "menu"
-    assert result["menu_options"] == ["parcels", "settings"]
+    assert result["menu_options"] == (
+        menu or ["add_parcel", "remove_parcels", "settings"]
+    )
     return await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": step_id}
     )
 
 
-async def test_options_add_parcel(hass):
+async def _add(hass, entry, carrier, code, menu=None):
+    result = await _open_options_step(hass, entry, "add_parcel", menu)
+    return await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CARRIER: carrier, CONF_TRACKING_CODE: code}
+    )
+
+
+_NO_PARCELS_MENU = ["add_parcel", "settings"]
+
+
+async def test_menu_hides_remove_when_nothing_is_tracked(hass):
     entry = _hub([])
     entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["menu_options"] == _NO_PARCELS_MENU
 
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": ["example123456"]}
-    )
+
+async def test_options_add_parcel_stores_the_chosen_courier(hass):
+    entry = _hub([])
+    entry.add_to_hass(hass)
+    result = await _add(hass, entry, "aramex", "mp0085494934", _NO_PARCELS_MENU)
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PARCELS] == [
-        {CONF_TRACKING_CODE: "EXAMPLE123456", CONF_CARRIER: "nz_post"}
+        {CONF_TRACKING_CODE: "MP0085494934", CONF_CARRIER: "aramex"}
     ]
 
 
-async def test_options_add_code_with_separators(hass):
-    """Pasted codes with spaces/dashes are sanitised like the consumer site."""
+async def test_same_code_shape_is_never_guessed(hass):
+    """The courier comes from the form, whatever the code looks like."""
     entry = _hub([])
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": ["example-123 456"]}
-    )
-    assert result["type"] == "create_entry"
+    result = await _add(hass, entry, "nz_post", "MP0085494934", _NO_PARCELS_MENU)
+    assert result["data"][CONF_PARCELS][0][CONF_CARRIER] == "nz_post"
+
+
+async def test_options_add_keeps_existing_parcels_and_settings(hass):
+    entry = _hub([{CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "aramex"}])
+    entry.add_to_hass(hass)
+    result = await _add(hass, entry, "nz_post", "example-123 456")
     assert result["data"][CONF_PARCELS] == [
-        {CONF_TRACKING_CODE: "EXAMPLE-123 456", CONF_CARRIER: "nz_post"}
+        {CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "aramex"},
+        {CONF_TRACKING_CODE: "EXAMPLE-123 456", CONF_CARRIER: "nz_post"},
     ]
 
 
 async def test_options_rejects_pasted_link(hass):
     entry = _hub([])
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {
-            "tracking_codes": [
-                "https://www.nzpost.co.nz/tools/tracking?trackid=1234567890"
-            ]
-        },
+    result = await _add(
+        hass,
+        entry,
+        "nz_post",
+        "https://www.nzpost.co.nz/tools/tracking?trackid=1234567890",
+        _NO_PARCELS_MENU,
     )
     assert result["type"] == "form"
     assert result["errors"] == {"base": "tracking_code_is_link"}
@@ -151,69 +170,50 @@ async def test_options_rejects_pasted_link(hass):
 async def test_options_rejects_malformed_code(hass):
     entry = _hub([])
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": ["ABC"]}
-    )
+    result = await _add(hass, entry, "nz_post", "ABC", _NO_PARCELS_MENU)
     assert result["type"] == "form"
     assert result["errors"] == {"base": "invalid_tracking_code"}
 
 
-async def test_options_drops_blank_tracking_code(hass):
-    entry = _hub([])
+async def test_options_rejects_an_already_tracked_code(hass):
+    entry = _hub([{CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "nz_post"}])
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": [""]}
-    )
-    assert result["type"] == "create_entry"
-    assert result["data"][CONF_PARCELS] == []
-
-
-async def test_options_de_duplicates_tracking_codes(hass):
-    entry = _hub([{CONF_TRACKING_CODE: "EXAMPLE111111"}])
-    entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": ["EXAMPLE111111", "example111111"]}
-    )
-    assert result["data"][CONF_PARCELS] == [
-        {CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "nz_post"}
-    ]
+    result = await _add(hass, entry, "aramex", "example111111")
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "already_tracked"}
 
 
 async def test_options_remove_parcel(hass):
     entry = _hub(
         [
-            {CONF_TRACKING_CODE: "EXAMPLE111111"},
-            {CONF_TRACKING_CODE: "EXAMPLE222222"},
+            {CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "nz_post"},
+            {CONF_TRACKING_CODE: "EXAMPLE222222"},  # legacy: no courier stored
+            {CONF_TRACKING_CODE: "EXAMPLE333333", CONF_CARRIER: "gone"},
         ]
     )
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
+    result = await _open_options_step(hass, entry, "remove_parcels")
+    labels = [
+        o["label"] for o in result["data_schema"].schema["remove"].config["options"]
+    ]
+    assert labels == [
+        "NZ Post: EXAMPLE111111",
+        "NZ Post: EXAMPLE222222",
+        "EXAMPLE333333",
+    ]
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": ["EXAMPLE222222"]}
+        result["flow_id"], {"remove": ["EXAMPLE222222", "EXAMPLE333333"]}
     )
     assert result["type"] == "create_entry"
-    codes = {p[CONF_TRACKING_CODE] for p in result["data"][CONF_PARCELS]}
-    assert codes == {"EXAMPLE222222"}
-
-
-async def test_options_can_clear_the_tracked_code_list(hass):
-    entry = _hub([{CONF_TRACKING_CODE: "EXAMPLE111111"}])
-    entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "parcels")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tracking_codes": []}
-    )
-    assert result["type"] == "create_entry"
-    assert result["data"][CONF_PARCELS] == []
+    assert result["data"][CONF_PARCELS] == [
+        {CONF_TRACKING_CODE: "EXAMPLE111111", CONF_CARRIER: "nz_post"}
+    ]
 
 
 async def test_options_changes_history_and_delivered(hass):
     entry = _hub([])
     entry.add_to_hass(hass)
-    result = await _open_options_step(hass, entry, "settings")
+    result = await _open_options_step(hass, entry, "settings", _NO_PARCELS_MENU)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         _settings_input(

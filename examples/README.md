@@ -15,7 +15,7 @@ All examples assume a single NZ Post hub. Adjust entity IDs to match yours.
 
 | Service | Description |
 |---|---|
-| `nz_parcel_tracker.track_parcel` | Start tracking a parcel (`tracking_code`). |
+| `nz_parcel_tracker.track_parcel` | Start tracking a parcel (`carrier` and `tracking_code`). |
 | `nz_parcel_tracker.untrack_parcel` | Stop tracking a parcel (`tracking_code`). |
 
 ## Events used in the examples

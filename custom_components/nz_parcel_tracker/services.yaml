@@ -6,10 +6,12 @@ track_parcel:
       selector:
         text:
     carrier:
-      required: false
+      required: true
+      example: nz_post
       selector:
         select:
           options:
+            - aramex
             - nz_post
           translation_key: carrier
 

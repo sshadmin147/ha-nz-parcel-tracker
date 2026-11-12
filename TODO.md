@@ -40,11 +40,10 @@ What is still to do for this fork. Tick items off or delete them as they are don
 
 ## 5. Add other couriers (the main goal)
 
-Done: the code is split into a courier-independent core and a `carriers/` package. NZ Post is `carriers/nz_post/`, behind the `Carrier` interface in `carriers/base.py`. Parcels are stored as `{tracking_code, carrier}`, the device and entities are named `nz_parcel_tracker`, and `track_parcel` takes an optional `carrier`. `CLAUDE.md` has the steps for adding a courier.
+Done: the code is split into a courier-independent core and a `carriers/` package. NZ Post is `carriers/nz_post/`, behind the `Carrier` interface in `carriers/base.py`. Parcels are stored as `{tracking_code, carrier}`, the user always chooses the courier (a dropdown in the options form, a required `carrier` on `track_parcel`; nothing is auto-detected), the device and entities are named `nz_parcel_tracker`, and `CLAUDE.md` has the steps for adding a courier.
 
-- [ ] Pick the first extra courier (for example CourierPost or Aramex) and check it has a usable public tracking endpoint and a stable payload before writing any code.
-- [ ] When two couriers share a code shape, `detect_carrier` picks the first registered one and the user must pass `carrier`. Decide how the options form should handle that (a courier choice per parcel, or a code prefix rule).
-- [ ] The options form takes plain codes only, so it cannot choose a courier explicitly. Extend it when a second courier exists.
+- [x] First extra courier: Aramex New Zealand (`carriers/aramex/`), ported from ha-aramex. Still to do: check its scan codes, label formats and the ETA handling against real parcels (none have been tracked through this fork yet).
+- [ ] Pick the next courier (for example CourierPost) and check it has a usable public tracking endpoint and a stable payload before writing any code.
 - [ ] Decide whether polling should be per courier (separate rate limits and backoff). The 429 backoff is currently shared across all couriers.
 - [ ] Rename the NZ Post specific names that remain in the core if any appear (the core should have none; `tests/test_carriers.py` checks it works with a fake second courier).
 - [ ] Update the README (*Supported couriers* table), `CLAUDE.md` and the examples for every courier added.
@@ -53,7 +52,7 @@ Done: the code is split into a courier-independent core and a `carriers/` packag
 
 My live HA runs the original `nz_post` integration, and some things there depend on its domain name:
 
-- [ ] `script.track_parcel` calls `nz_post.track_parcel` and has the link and format checks that this fork now does itself. Change it to `nz_parcel_tracker.track_parcel` and drop the duplicated checks.
+- [ ] `script.track_parcel` calls `nz_post.track_parcel` and has the link and format checks that this fork now does itself. Change it to `nz_parcel_tracker.track_parcel` with `carrier: nz_post` (now required) and drop the duplicated checks.
 - [ ] `automation.parcel_delivered_notification` triggers on the event `nz_post_parcel_delivered`. It becomes `nz_parcel_tracker_parcel_delivered`.
 - [ ] `automation.clean_up_old_parcels` calls `nz_post.untrack_parcel` and reads `sensor.nz_post_incoming_parcels` / `sensor.nz_post_delivered_parcels`, using the `barcode` and `delivered_at` fields of their `parcels` attribute. Update the names (the entities become `sensor.nz_parcel_tracker_incoming_parcels` / `sensor.nz_parcel_tracker_delivered_parcels`), and keep those attribute fields unchanged so it keeps working.
 - [ ] Dashboards using `sensor.nz_post_*` entities (they become `sensor.nz_parcel_tracker_*`), plus the Package slot helpers (`input_text.package_slot_1` to `10`).

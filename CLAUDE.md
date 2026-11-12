@@ -6,8 +6,8 @@ couriers, domain `nz_parcel_tracker`. A fork of
 stripped back to its own tracking logic: no dependency on any other
 integration, shared CI or suite tooling. Not published to HACS.
 
-NZ Post is the only courier so far, but everything outside `carriers/nz_post/`
-is courier independent. Keep it that way: no courier names, endpoints, payload
+NZ Post and Aramex (New Zealand only) are the couriers so far. Everything
+outside `carriers/<courier>/` is courier independent. Keep it that way: no courier names, endpoints, payload
 fields or status wording in the core.
 
 ## Layout
@@ -24,7 +24,7 @@ Courier independent (the core):
 | `codes.py` | Tracking code helpers: normalise, link detection, validation against the registered couriers |
 | `config_flow.py` | Hub creation and the options flow (parcels, delivered filter, history) |
 | `sensor.py`, `button.py`, `calendar.py` | The entities |
-| `services.py` | `track_parcel` (optional `carrier`) / `untrack_parcel` |
+| `services.py` | `track_parcel` (required `carrier`) / `untrack_parcel` |
 | `device.py`, `device_trigger.py`, `diagnostics.py` | Device info, device triggers, redacted diagnostics |
 | `const.py` | Domain, option keys, polling constants, the shared `ParcelStatus` values |
 
@@ -33,7 +33,8 @@ Couriers, in `carriers/`:
 | File | Role |
 |---|---|
 | `carriers/base.py` | The `Carrier` interface and `CarrierApiError` |
-| `carriers/__init__.py` | `CARRIERS` registry, `create_carriers`, `detect_carrier` |
+| `carriers/__init__.py` | `CARRIERS` registry, `create_carriers` |
+| `carriers/aramex/` | Aramex NZ: same layout as `nz_post/`; `async_prepare` loads the NZ time zone for the date-only ETA |
 | `carriers/nz_post/` | NZ Post: `api.py` (HTTP client), `mapping.py` (status maps and normalising), `const.py` (endpoints), `__init__.py` (`NZPostCarrier`) |
 
 Stored parcels are `{tracking_code, carrier}` dicts in the entry options. An
@@ -45,10 +46,11 @@ entry without `carrier` means `nz_post` (the only courier when it was added).
    subclass with `carrier_name` set), a status mapping and a `Carrier` subclass.
    Build every parcel with `parcels.build_parcel` and call
    `parcels.warn_unmapped_status` for statuses you do not map.
-2. Implement `matches_code` (a class method) so codes can be detected and
-   validated without a session. When two couriers could share a code shape, the
-   first registered wins in `detect_carrier`; the `carrier` field of
-   `track_parcel` is the explicit override.
+2. Implement `matches_code` (a class method) so a code can be validated for
+   this courier without a session. The user always chooses the courier (options
+   form dropdown, required `carrier` on `track_parcel`); codes are never used to
+   guess it, because couriers share code shapes. Override `async_prepare` for
+   setup that needs the event loop.
 3. List the class in `CARRIERS` in `carriers/__init__.py` and add its key to the
    `carrier` selector in `services.yaml` and the `selector.carrier` names in
    `strings.json` and `translations/en.json`.
@@ -139,3 +141,17 @@ python -m pytest tests/ --cov=custom_components.nz_parcel_tracker
 (PowerShell: `$env:PYTHONPATH = "tests\windows_stubs"`.) `tests/conftest.py`
 already works around the Windows socket and DNS-resolver limits. On Linux or
 WSL no stubs are needed.
+
+## Aramex specifics (`carriers/aramex/`)
+
+Ported from [ha-aramex](https://github.com/ha-parcel-integrations/ha-aramex)
+(MIT, copyright line added to `LICENSE`), New Zealand host only. Keyless; one GET
+per label; a label with no `Scans` list is "unknown or not scanned yet" (`None`).
+Status mapping is keyed on scan codes (`PP8`, `ONB`, `R36`...); unknown codes
+give `unknown` plus a one-shot warning. `DeliveryETADate` (`DD/MM/YYYY`) is a
+booking-time estimate and becomes an all-day `planned_from`/`planned_to` in
+`Pacific/Auckland`, cleared once delivered; it is not corrected for delays. The
+payload carries recipient data, so `raw` keeps only code, text and timestamp and
+`sender`/`receiver`/`weight`/`dimensions`/`pickup_point` stay `None`. The status
+codes and label formats come from the upstream repo and have not been checked
+against real parcels here.

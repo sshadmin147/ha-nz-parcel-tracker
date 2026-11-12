@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.exceptions import ServiceValidationError
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.nz_parcel_tracker.const import (
     CONF_CARRIER,
@@ -43,7 +44,7 @@ async def test_track_parcel_adds_to_options(hass):
         await hass.services.async_call(
             DOMAIN,
             "track_parcel",
-            {CONF_TRACKING_CODE: "EXAMPLE999999"},
+            {CONF_TRACKING_CODE: "EXAMPLE999999", CONF_CARRIER: "nz_post"},
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -61,7 +62,7 @@ async def test_track_parcel_normalizes_code(hass):
         await hass.services.async_call(
             DOMAIN,
             "track_parcel",
-            {CONF_TRACKING_CODE: "example-999 999"},
+            {CONF_TRACKING_CODE: "example-999 999", CONF_CARRIER: "nz_post"},
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -75,7 +76,10 @@ async def test_track_parcel_rejects_blank_code(hass):
     await _setup(hass)
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
-            DOMAIN, "track_parcel", {CONF_TRACKING_CODE: ""}, blocking=True
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "", CONF_CARRIER: "nz_post"},
+            blocking=True,
         )
 
 
@@ -84,16 +88,24 @@ async def test_track_parcel_rejects_pasted_link(hass):
     link = "https://www.trackandtrace.courierpost.co.nz/search/00894210392937491823"
     with pytest.raises(ServiceValidationError, match="web address"):
         await hass.services.async_call(
-            DOMAIN, "track_parcel", {CONF_TRACKING_CODE: link}, blocking=True
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: link, CONF_CARRIER: "nz_post"},
+            blocking=True,
         )
     assert entry.options[CONF_PARCELS] == []
 
 
 async def test_track_parcel_rejects_malformed_code(hass):
     entry = await _setup(hass)
-    with pytest.raises(ServiceValidationError, match="not a valid tracking code"):
+    with pytest.raises(
+        ServiceValidationError, match="not a valid tracking code for NZ Post"
+    ):
         await hass.services.async_call(
-            DOMAIN, "track_parcel", {CONF_TRACKING_CODE: "ABC"}, blocking=True
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "ABC", CONF_CARRIER: "nz_post"},
+            blocking=True,
         )
     assert entry.options[CONF_PARCELS] == []
 
@@ -108,7 +120,7 @@ async def test_track_parcel_duplicate_is_noop(hass):
             await hass.services.async_call(
                 DOMAIN,
                 "track_parcel",
-                {CONF_TRACKING_CODE: "EXAMPLE999999"},
+                {CONF_TRACKING_CODE: "EXAMPLE999999", CONF_CARRIER: "nz_post"},
                 blocking=True,
             )
             await hass.async_block_till_done()
@@ -148,3 +160,39 @@ async def test_untrack_unknown_code_is_noop(hass):
         await hass.async_block_till_done()
 
     assert len(entry.options[CONF_PARCELS]) == 1
+
+
+async def test_track_parcel_requires_a_courier(hass):
+    entry = await _setup(hass)
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "EXAMPLE999999"},
+            blocking=True,
+        )
+    assert entry.options[CONF_PARCELS] == []
+
+
+async def test_track_parcel_rejects_an_unknown_courier(hass):
+    await _setup(hass)
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "track_parcel",
+            {CONF_TRACKING_CODE: "EXAMPLE999999", CONF_CARRIER: "nope"},
+            blocking=True,
+        )
+
+
+async def test_track_parcel_stores_the_chosen_courier(hass):
+    entry = await _setup(hass)
+    await hass.services.async_call(
+        DOMAIN,
+        "track_parcel",
+        {CONF_TRACKING_CODE: "mp0085494934", CONF_CARRIER: "aramex"},
+        blocking=True,
+    )
+    assert entry.options[CONF_PARCELS] == [
+        {CONF_TRACKING_CODE: "MP0085494934", CONF_CARRIER: "aramex"}
+    ]

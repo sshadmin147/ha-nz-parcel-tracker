@@ -16,7 +16,7 @@ new e-mail ──imap_content──▶ automation ──▶ regex match? ──�
 
 ## Prerequisites
 
-- This integration, with the `nz_parcel_tracker.track_parcel` action available (field `tracking_code`).
+- This integration, with the `nz_parcel_tracker.track_parcel` action available (fields `carrier` and `tracking_code`; the examples send `carrier: nz_post`).
 - The core **IMAP** integration (ships with Home Assistant, no HACS needed).
 - *(Optional but recommended)* an **AI Task** entity (e.g. Anthropic/Claude, Google, OpenAI) for the fallback path. Without it, simply delete the `else:` block — the regex path works standalone.
 

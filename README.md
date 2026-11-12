@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking); the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
+A custom Home Assistant integration that tracks parcels from New Zealand couriers. No account is needed: add each tracking code you want to follow. It currently supports [NZ Post](https://www.nzpost.co.nz/tools/tracking) and [Aramex New Zealand](https://www.aramex.co.nz/tools/track); the code is split so other couriers can be added (see [Adding a courier](CLAUDE.md#adding-a-courier)).
 
 ## Contents
 
@@ -47,8 +47,9 @@ A custom Home Assistant integration that tracks parcels from New Zealand courier
 | Courier | Key | Tracking code | Provides |
 |---|---|---|---|
 | NZ Post | `nz_post` | 8 to 30 letters and numbers (spaces and hyphens are ignored) | Status, status history and a link to the public tracker. No delivery window, pickup point, sender, receiver, weight or dimensions. |
+| Aramex (New Zealand) | `aramex` | 8 to 30 letters and numbers | Status, status history, a link to the public tracker and Aramex's estimated delivery date (an all-day window, shown on the calendar). No pickup point, sender, receiver, weight or dimensions. |
 
-The courier is worked out from the tracking code. Pass `carrier` to `nz_parcel_tracker.track_parcel` to choose one explicitly.
+You always choose the courier a parcel is with; it is never guessed from the code. Both couriers use similar-looking codes, so guessing would sometimes be wrong.
 
 ## Installation
 
@@ -67,7 +68,7 @@ Copy `custom_components/nz_parcel_tracker` into your `config/custom_components/`
 
 Or set it up by hand: add the integration via **Settings → Devices & Services → Add Integration → NZ Parcel Tracker**. There is nothing to fill in: the hub is created immediately.
 
-Then add parcels via the integration's **Configure** dialog, the [`nz_parcel_tracker.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
+Then add parcels via the integration's **Configure** dialog (choose the courier, then enter the tracking number), the [`nz_parcel_tracker.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
 
 ## Options
 
@@ -75,7 +76,7 @@ Open **Configure** on the integration entry:
 
 | Section | Option | Default | Description |
 |---|---|---|---|
-| Parcels | Add / remove | none | Manage the tracked tracking codes. Changes apply immediately, no restart. |
+| Parcels | Add a parcel / Remove parcels | none | Add a parcel by choosing its courier and entering the tracking number, or remove tracked parcels. Changes apply immediately, no restart. |
 | Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
 
@@ -139,7 +140,7 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `nz_parcel_tracker.track_parcel` | `tracking_code`, `carrier` (optional) | Start tracking a parcel. The code must fit a supported courier (see [Supported couriers](#supported-couriers)); web addresses are rejected. `carrier` is worked out from the code when left out |
+| `nz_parcel_tracker.track_parcel` | `tracking_code`, `carrier` (required) | Start tracking a parcel. `carrier` is the courier key (`nz_post`, `aramex`) and the code must fit that courier (see [Supported couriers](#supported-couriers)); web addresses are rejected |
 | `nz_parcel_tracker.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
 
 ## Examples

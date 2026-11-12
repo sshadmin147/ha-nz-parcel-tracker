@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import aiohttp
 
+from .aramex import AramexCarrier
 from .base import Carrier, CarrierApiError
 from .nz_post import NZPostCarrier
 
@@ -16,22 +17,16 @@ __all__ = [
     "Carrier",
     "CarrierApiError",
     "create_carriers",
-    "detect_carrier",
 ]
 
-#: Every supported courier by key. Order matters: when a tracking code fits
-#: more than one courier, :func:`detect_carrier` picks the first.
-CARRIERS: dict[str, type[Carrier]] = {NZPostCarrier.key: NZPostCarrier}
+#: Every supported courier by key. The user always picks the courier for a
+#: parcel (codes are never guessed), so the order only affects the selector.
+CARRIERS: dict[str, type[Carrier]] = {
+    AramexCarrier.key: AramexCarrier,
+    NZPostCarrier.key: NZPostCarrier,
+}
 
 
 def create_carriers(session: aiohttp.ClientSession) -> dict[str, Carrier]:
     """Build one instance of every courier around a shared HTTP session."""
     return {key: carrier.create(session) for key, carrier in CARRIERS.items()}
-
-
-def detect_carrier(code: str) -> str | None:
-    """Return the key of the first courier whose code shape matches ``code``."""
-    for key, carrier in CARRIERS.items():
-        if carrier.matches_code(code):
-            return key
-    return None

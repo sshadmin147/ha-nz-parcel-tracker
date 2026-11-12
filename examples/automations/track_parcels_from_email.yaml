@@ -59,6 +59,7 @@ actions:
       sequence:
         - action: nz_parcel_tracker.track_parcel
           data:
+            carrier: nz_post
             tracking_code: "{{ repeat.item }}"
   - if:
       - condition: template
@@ -106,6 +107,7 @@ actions:
             sequence:
               - action: nz_parcel_tracker.track_parcel
                 data:
+                  carrier: nz_post
                   tracking_code: "{{ ai_result.data.tracking_code | trim }}"
               - action: notify.mobile_app_your_phone
                 data:
